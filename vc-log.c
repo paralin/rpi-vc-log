@@ -151,7 +151,7 @@ static void vc_open(void) {
 		abort();
 	}
 
-	vc_mem = mmap(NULL, vc_mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, vc_fd, 0);
+	vc_mem = mmap(NULL, vc_mem_size, PROT_READ, MAP_SHARED, vc_fd, 0);
 	if(vc_mem == MAP_FAILED) {
 		perror("mmap");
 		abort();
@@ -236,7 +236,7 @@ static void vc_log_read_all(void) {
 
 	uint32_t log_magic = vc_read_u32(log_start);
 	if(log_magic != 0x564c4f47) {
-		fprintf(stderr, "bad log magic: %x, wanted 4c4f4756\n", log_magic);
+		fprintf(stderr, "bad log magic: %x, wanted 564c4f47\n", log_magic);
 		abort();
 	}
 
