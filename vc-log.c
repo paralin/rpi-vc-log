@@ -160,7 +160,7 @@ static void vc_open(void) {
 	uint32_t dbg_off = vc_mem_load + VC_DEBUG_HEADER_OFFSET;
 	uint32_t dbg_magic = vc_read_u32(dbg_off + 4);
 	if(dbg_magic != 0x48444356) {
-		fprintf(stderr, "bad debug magic: %x, expected 48444356\n", dbg_magic);
+		fprintf(stderr, "bad debug magic: %08x, wanted 48444356\n", dbg_magic);
 		abort();
 	}
 	vc_syms_off = vc_read_u32(dbg_off);
@@ -195,7 +195,7 @@ static void vc_log_read(size_t descriptor_ptr) {
 
 	uint32_t magic = vc_read_u32(ptr);
 	if(magic != 0x5353454d) {
-		printf("bad magic %x, wanted 5353454d", magic);
+		printf("bad fifo log magic: %08x, wanted 5353454d", magic);
 		return;
 	}
 
@@ -236,7 +236,7 @@ static void vc_log_read_all(void) {
 
 	uint32_t log_magic = vc_read_u32(log_start);
 	if(log_magic != 0x564c4f47) {
-		fprintf(stderr, "bad log magic: %x, wanted 564c4f47\n", log_magic);
+		fprintf(stderr, "bad log header magic: %08x, wanted 564c4f47\n", log_magic);
 		abort();
 	}
 
