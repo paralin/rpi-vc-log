@@ -219,7 +219,7 @@ static void vc_log_read(size_t descriptor_ptr) {
 		if(!s) abort();
 		vc_read(s, at + 12, len);
 		s[len] = 0;
-		printf("[%u : %u] %s\n", time, seq, s);
+		printf("[%5u.%06u] %s\n", time / 1000000, time % 1000000, s);
 		free(s);
 
 		at += size;
