@@ -37,13 +37,13 @@ static void vc_read(void *buf, size_t off, size_t size) {
 
 	if(size == 0) return;
 
-	size_t skip = off % 4;
-	volatile uint32_t *inp = (volatile uint32_t*)((char*)vc_mem + (off - skip));
+	size_t skip = off % 8;
+	volatile uint64_t *inp = (volatile uint64_t*)((char*)vc_mem + (off - skip));
 	char *out = buf;
 	if(skip) {
-		uint32_t v = *inp;
+		uint64_t v = *inp;
 		inp++;
-		size_t have = 4 - skip;
+		size_t have = 8 - skip;
 		if(have >= size) {
 			memcpy(out, (char*)&v + skip, size);
 			return;
@@ -54,15 +54,15 @@ static void vc_read(void *buf, size_t off, size_t size) {
 	}
 
 	while(1) {
-		uint32_t v = *inp;
+		uint64_t v = *inp;
 		inp++;
-		if(size < 4) {
+		if(size < 8) {
 			memcpy(out, &v, size);
 			return;
 		}
-		memcpy(out, &v, 4);
-		out += 4;
-		size -= 4;
+		memcpy(out, &v, 8);
+		out += 8;
+		size -= 8;
 	}
 }
 
