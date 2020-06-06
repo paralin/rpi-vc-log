@@ -113,6 +113,7 @@ static char *vc_read_str(size_t off) {
 		}
 
 		size_t alloc2 = alloc + (alloc << 2);
+		alloc2 += (-alloc2) % 16;
 		char *r2 = realloc(r, alloc2);
 		if(!r2) abort();
 		r = r2;
