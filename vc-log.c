@@ -183,6 +183,40 @@ static size_t vc_sym_find(const char *want) {
 	}
 }
 
+struct vc_log_header {
+	uint32_t time;
+	uint16_t seq;
+	uint16_t size;
+	uint32_t category;
+};
+
+_Static_assert(sizeof(struct vc_log_header) == 12, "");
+
+static void vc_log_memcpy(size_t start, size_t end, size_t *p_at, void *buf, size_t size) {
+	size_t at = *p_at;
+	if(size > end - start) abort();
+	if(at < start || at > end) abort();
+	if(at == end) at = start;
+	size_t left = end - at;
+	if(size > left) {
+		vc_read(buf, at, left);
+		at = start;
+		size -= left;
+		buf = (char*)buf + left;
+	}
+	*p_at = at + size;
+	vc_read(buf, at, size);
+}
+
+static const char *decode_category(uint32_t bits) {
+	switch(bits) {
+		case 65536:
+			return "vcos";
+		default:
+			return "unknown";
+	}
+}
+
 static void vc_log_read(size_t descriptor_ptr) {
 	uint8_t fmt = vc_read_u8(descriptor_ptr);
 	size_t ptr = vc_read_ptr(descriptor_ptr + 4);
@@ -207,23 +241,19 @@ static void vc_log_read(size_t descriptor_ptr) {
 
 	size_t at = l_next_msg;
 	do {
-		uint32_t time = vc_read_u32(at + 0);
-		uint32_t seq = vc_read_u16(at + 4);
-		size_t size = vc_read_u16(at + 6);
-		if(size < 12) {
-			printf("short message: %zu\n", size);
+		struct vc_log_header hdr;
+		vc_log_memcpy(l_start, l_end, &at, &hdr, sizeof(hdr));
+		if(hdr.size < 8) {
+			printf("short message: %u\n", hdr.size);
 			return;
 		}
-		size_t len = size - 12;
+		size_t len = hdr.size - sizeof(hdr);
 		char *s = malloc(len + 1);
 		if(!s) abort();
-		vc_read(s, at + 12, len);
+		vc_log_memcpy(l_start, l_end, &at, s, len);
 		s[len] = 0;
-		printf("[%5u.%06u] %s\n", time / 1000000, time % 1000000, s);
+		printf("[%5u.%06u] %s: %s\n", hdr.time / 1000000, hdr.time % 1000000, decode_category(hdr.category), s);
 		free(s);
-
-		at += size;
-		if(at == l_end) at = l_start;
 	} while(at != l_ptr);
 }
 
