@@ -11,7 +11,6 @@
 
 static int vc_fd;
 static uint32_t vc_mem_size, vc_mem_base, vc_mem_load, vc_mem_phys;
-static void *vc_mem;
 static uint32_t vc_syms_off;
 
 #define VC_MEM_IOC_MAGIC  'v'
@@ -26,43 +25,14 @@ static uint32_t vc_syms_off;
 #define VC_SYMBOL_BASE_OFFSET VC_DEBUG_HEADER_OFFSET
 
 static void vc_read(void *buf, size_t off, size_t size) {
-	// if(off < vc_mem_base) {
-	// 	fprintf(stderr, "small address\n");
-	// 	abort();
-	// }
-	if(off > vc_mem_size || size > vc_mem_size - off) {
-		fprintf(stderr, "out of bounds read: %zx+%zx/%x\n", off, size, vc_mem_size);
+	ssize_t r = pread(vc_fd, buf, size, off);
+	if(r < 0) {
+		fprintf(stderr, "pread() failed: %m\n");
 		abort();
 	}
-
-	if(size == 0) return;
-
-	size_t skip = off % 8;
-	volatile uint64_t *inp = (volatile uint64_t*)((char*)vc_mem + (off - skip));
-	char *out = buf;
-	if(skip) {
-		uint64_t v = *inp;
-		inp++;
-		size_t have = 8 - skip;
-		if(have >= size) {
-			memcpy(out, (char*)&v + skip, size);
-			return;
-		}
-		memcpy(out, (char*)&v + skip, have);
-		out += have;
-		size -= have;
-	}
-
-	while(1) {
-		uint64_t v = *inp;
-		inp++;
-		if(size < 8) {
-			memcpy(out, &v, size);
-			return;
-		}
-		memcpy(out, &v, 8);
-		out += 8;
-		size -= 8;
+	if((size_t)r != size) {
+		fprintf(stderr, "pread() short: %zu/%zu\n", (size_t)r, size);
+		abort();
 	}
 }
 
@@ -85,13 +55,7 @@ static uint8_t vc_read_u8(size_t off) {
 }
 
 static size_t vc_read_ptr(size_t off) {
-	uint32_t r = vc_read_u32(off);
-	if(r == 0) return 0;
-	if(r <= 0xc0000000) {
-		fprintf(stderr, "invalid pointer: %x\n", r);
-		abort();
-	}
-	return r - 0xc0000000;
+	return vc_read_u32(off);
 }
 
 static char *vc_read_str(size_t off) {
@@ -149,12 +113,6 @@ static void vc_open(void) {
 	r = ioctl(vc_fd, VC_MEM_IOC_MEM_PHYS_ADDR, &vc_mem_phys);
 	if(r < 0) {
 		perror("VC_MEM_IOC_MEM_PHYS_ADDR");
-		abort();
-	}
-
-	vc_mem = mmap(NULL, vc_mem_size, PROT_READ, MAP_SHARED, vc_fd, 0);
-	if(vc_mem == MAP_FAILED) {
-		perror("mmap");
 		abort();
 	}
 
